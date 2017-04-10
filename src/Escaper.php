@@ -35,6 +35,6 @@ class Escaper
      */
     public function argument($argument)
     {
-        return str_replace("*", "'*'", escapeshellarg($argument));
+        return escapeshellarg($argument);
     }
 }
