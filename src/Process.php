@@ -159,7 +159,7 @@ class Process
      *
      * @return Process
      */
-    public function log($log, $mode = 0)
+    public function log($log, $mode = FILE_APPEND)
     {
         $this->log = $log;
         $this->mode = $mode;
