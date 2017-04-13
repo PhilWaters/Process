@@ -19,9 +19,9 @@ class Waiter
      *
      * @param number $pid Process ID
      */
-    public function __construct($pid)
+    public function __construct($process)
     {
-        $this->pid = $pid;
+        $this->process = $process;
     }
 
     /**
@@ -37,7 +37,7 @@ class Waiter
         $count = 0;
 
         while ($timeout === null || $count++ < $timeout) {
-            if (!$this->isRunning($this->pid)) {
+            if (!$this->isRunning()) {
                 return true;
             }
 
@@ -56,29 +56,28 @@ class Waiter
      */
     public function terminate($signal)
     {
-        shell_exec(sprintf("kill -%d %d", $signal, $this->pid));
+        $status = proc_get_status($this->process);
 
-        return !$this->isRunning($this->pid);
+        if (!proc_terminate($this->process, $signal)) {
+            return false;
+        }
+
+        usleep(1000);
+
+        $status = proc_get_status($this->process);
+
+        return $status['signaled'] && !$status['running'];
     }
 
     /**
      * Checks if the process is still running
      *
-     * @param number $pid Process ID
-     *
      * @return boolean True, if process is running, else, false
      */
-    private function isRunning($pid)
+    private function isRunning()
     {
-        try {
-            $result = shell_exec(sprintf("ps %d", $pid));
+        $status = proc_get_status($this->process);
 
-            if (count(preg_split("/\n/", $result)) > 2) {
-                return true;
-            }
-        } catch (Exception $e) {
-        }
-
-        return false;
+        return $status['running'];
     }
 }

@@ -72,7 +72,7 @@ class Option
     {
         $result = $this->option;
 
-        if ($this->value === null) {
+        if ($this->value !== null) {
             $result .= $this->separator . $this->value;
         }
 

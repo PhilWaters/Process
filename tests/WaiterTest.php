@@ -37,7 +37,7 @@ class WaiterTest extends PHPUnit_Framework_TestCase
         $this->assertFalse($waiter->wait(2));
     }
 
-    public function testTermincate_hangUp()
+    public function testTerminate_hangUp()
     {
         $process = new Process();
 
@@ -47,21 +47,25 @@ class WaiterTest extends PHPUnit_Framework_TestCase
             ->async()
             ->run();
 
-        $this->assertTrue($waiter->terminate(1));
+        $this->assertTrue($waiter->terminate(SIGHUP));
     }
 
-    public function testTermincate_nohup()
+    public function testTerminate_nohup()
     {
         $process = new Process();
 
         $waiter = $process
             ->cmd("nohup sleep")
-            ->arg(10)
+            ->arg("10")
             ->async()
             ->run();
 
-        $this->assertFalse($waiter->terminate(1));
-        $this->assertTrue($waiter->terminate(9));
+        usleep(5000);
+        $this->assertFalse($waiter->terminate(SIGHUP));
+        usleep(5000);
+        $this->assertTrue($waiter->terminate(SIGTERM));
+        usleep(5000);
+        $this->assertFalse($waiter->terminate(SIGHUP));
 
         if (file_exists("nohup.out")) {
             unlink("nohup.out");

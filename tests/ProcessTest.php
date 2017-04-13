@@ -25,13 +25,26 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $this->assertTrue(file_exists($logPath));
     }
 
+    public function testMultipleCommands()
+    {
+        $process = new Process();
+
+        $result = $process
+            ->cmd("ls")
+            ->cmd("grep")
+            ->option("-v", "php")
+            ->run();
+
+        $this->assertContains("README.md", $result);
+    }
+
     public function testOption_withValue()
     {
         $process = new Process();
 
         $output = $process
             ->cmd("ls")
-            ->option("-l", __DIR__)
+            ->option("-l", __DIR__ . "/..")
             ->run();
 
         $this->assertContains("phpunit.xml", implode("\n", $output));
@@ -39,13 +52,12 @@ class ProcessTest extends PHPUnit_Framework_TestCase
 
     public function testCwd()
     {
-
         $process = new Process();
 
         $output = $process
             ->cwd(__DIR__ . "/../src")
             ->cmd("ls")
-            ->option("-l", __DIR__)
+            ->option("-l")
             ->run();
 
         $this->assertContains("Process.php", implode("\n", $output));
@@ -71,5 +83,30 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $process = new Process();
 
         $process->cmd("hfjkdshkjghfdjkgdf")->run();
+    }
+
+    public function testStdin()
+    {
+        $process = new Process();
+
+        $this->assertContains("toast", $process->stdin("test")->cmd("sed")->arg("s/e/oa/g")->run());
+
+        $process = new Process();
+
+        $response = $process->stdin(__DIR__ . "/data/input.txt", "file")->cmd("grep")->arg("alpha")->run();
+
+        $this->assertContains("alpha", $response);
+        $this->assertNotContains("beta", $response);
+        $this->assertNotContains("charlie", $response);
+    }
+
+    /**
+     * @expectedException \Exception
+     */
+    public function testInvalid()
+    {
+        $process = new Process();
+
+        $process->arg("test");
     }
 }

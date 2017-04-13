@@ -27,11 +27,18 @@ class Process
     private $cwd = null;
 
     /**
-     * Stores command to run
+     * Stores current command
      *
      * @var string
      */
-    private $cmd;
+    private $cmd = null;
+
+    /**
+     * Stores commands to run
+     *
+     * @var string
+     */
+    private $cmds;
 
     /**
      * Stores command arguments
@@ -48,11 +55,22 @@ class Process
     private $async = false;
 
     /**
-     * Stores log file path
+     * Stores stdin
      *
      * @var string
      */
-    private $log = null;
+    private $stdin = null;
+
+    /**
+     * Stores proc_open descriptor spec
+     *
+     * @var string
+     */
+    private $descriptorSpec = array(
+        array("pipe", "r"),
+        array("pipe", "w"),
+        array("pipe", "w")
+    );
 
     /**
      * Stores log file write mode
@@ -85,6 +103,7 @@ class Process
     public function cmd($cmd)
     {
         $this->cmd = new Command($cmd);
+        $this->cmds[] = $this->cmd;
 
         return $this;
     }
@@ -102,6 +121,7 @@ class Process
      */
     public function option($option, $value = null, $separator = " ")
     {
+        $this->isCmdSet();
         $this->cmd->option($option, $value, $separator);
 
         return $this;
@@ -116,6 +136,7 @@ class Process
      */
     public function arg($arg)
     {
+        $this->isCmdSet();
         $this->cmd->arg($arg);
 
         return $this;
@@ -130,6 +151,7 @@ class Process
      */
     public function args($arg)
     {
+        $this->isCmdSet();
         $args = func_get_args();
 
         foreach ($args as $arg) {
@@ -154,15 +176,66 @@ class Process
     /**
      * Sets the path to a log file
      *
-     * @param string $log  Log file path
+     * @param string $path Log file path
      * @param number $mode Log write mode (FILE_APPEND)
      *
      * @return Process
      */
-    public function log($log, $mode = FILE_APPEND)
+    public function log($path, $mode = FILE_APPEND)
     {
-        $this->log = $log;
-        $this->mode = $mode;
+        $this->stdout($path, $mode);
+        $this->stderr($path, $mode);
+
+        return $this;
+    }
+
+    /**
+     * Sets STDIN source (file or pipe)
+     *
+     * @param mixed  $stdin File path or value to pass to STDIN
+     * @param string $type  file or pipe
+     *
+     * @return Process
+     */
+    public function stdin($stdin, $type = "pipe")
+    {
+        if ($type == "pipe") {
+            $this->descriptorSpec[0] = array($type, "r");
+            $this->stdin = $stdin;
+        } else {
+            $this->descriptorSpec[0] = array($type, $stdin, "r");
+            $this->stdin = null;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets STDOUT path
+     *
+     * @param string $path File path
+     * @param string $mode Write mode (FILE_APPEND)
+     *
+     * @return Process
+     */
+    public function stdout($path, $mode = FILE_APPEND)
+    {
+        $this->descriptorSpec[1] = array("file", $path, $mode == FILE_APPEND ? "a" : "w");
+
+        return $this;
+    }
+
+    /**
+     * Sets STDERR path
+     *
+     * @param string $path File path
+     * @param string $mode Write mode (FILE_APPEND)
+     *
+     * @return Process
+     */
+    public function stderr($path, $mode = FILE_APPEND)
+    {
+        $this->descriptorSpec[2] = array("file", $path, $mode == FILE_APPEND ? "a" : "w");
 
         return $this;
     }
@@ -178,16 +251,31 @@ class Process
     {
         $cmd = $this->buildCommand();
 
-        if ($this->async) {
-            $pid = shell_exec($cmd);
+        $pipes = array();
 
-            return new Waiter($pid);
+        $process = proc_open($cmd, $this->descriptorSpec, $pipes, $this->cwd);
+
+        if ($this->stdin !== null) {
+            fwrite($pipes[0], $this->stdin);
         }
 
-        exec($cmd, $output, $return);
+        if ($this->descriptorSpec[0][0] == "pipe") {
+            fclose($pipes[0]);
+        }
+
+        if ($this->async) {
+            return new Waiter($process);
+        }
+
+        if ($this->descriptorSpec[1][0] == "pipe") {
+            $output = explode("\n", stream_get_contents($pipes[1]));
+            fclose($pipes[1]);
+        }
+
+        $return = proc_close($process);
 
         if ($return != 0) {
-            throw new \Exception("$cmd failed - return code $return");
+            throw new \Exception("$cmd failed - return code $return", $return);
         }
 
         return $output;
@@ -200,24 +288,22 @@ class Process
      */
     public function buildCommand()
     {
-        $cmd = $this->cmd;
+        $this->isCmdSet();
 
-        if (!empty($this->cwd)) {
-            $cmd = "cd " . $this->cwd . " && " . $cmd;
+        return implode(" | ", $this->cmds);
+    }
+
+    /**
+     * Checks if a command has been set
+     *
+     * @throws \Exception
+     *
+     * @return void
+     */
+    private function isCmdSet()
+    {
+        if ($this->cmd === null) {
+            throw new \Exception("You must call cmd() first");
         }
-
-        if (!empty($this->log)) {
-            $cmd .= " " . ($this->mode == FILE_APPEND ? ">>" : ">") . " " . $this->log;
-        } elseif ($this->async) {
-            $cmd .= " >/dev/null";
-        }
-
-        $cmd .= " 2>&1";
-
-        if ($this->async) {
-            $cmd .= " & echo $!";
-        }
-
-        return $cmd;
     }
 }
