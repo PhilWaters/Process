@@ -109,4 +109,28 @@ class ProcessTest extends PHPUnit_Framework_TestCase
 
         $process->arg("test");
     }
+
+    public function testEnv()
+    {
+        $process = new Process();
+
+        $this->assertContains(
+            "This is a test",
+            $process
+                ->env(array("PHP_TEST" => "This is a test"))
+                ->cmd("php")
+                ->option("-r", "echo getenv('PHP_TEST');")
+                ->run()
+            );
+    }
+
+    /**
+     * @expectedException \InvalidArgumentException
+     */
+    public function testEnv_invalid()
+    {
+        $process = new Process();
+
+        $process->env("INVALID");
+    }
 }

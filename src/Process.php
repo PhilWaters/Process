@@ -62,6 +62,13 @@ class Process
     private $stdin = null;
 
     /**
+     * Stores enevironment variables
+     *
+     * @var array
+     */
+    private $env = null;
+
+    /**
      * Stores proc_open descriptor spec
      *
      * @var string
@@ -241,6 +248,26 @@ class Process
     }
 
     /**
+     * Sets array of environment variables
+     *
+     * @param array $env Array of environment variables
+     *
+     * @throws \InvalidArgumentException
+     *
+     * @return Process
+     */
+    public function env($env)
+    {
+        if (!is_array($env)) {
+            throw new \InvalidArgumentException("\$env must be an array");
+        }
+
+        $this->env = $env;
+
+        return $this;
+    }
+
+    /**
      * Runs the command
      *
      * @throws Exception
@@ -253,7 +280,7 @@ class Process
 
         $pipes = array();
 
-        $process = proc_open($cmd, $this->descriptorSpec, $pipes, $this->cwd);
+        $process = proc_open($cmd, $this->descriptorSpec, $pipes, $this->cwd, $this->env);
 
         if ($this->stdin !== null) {
             fwrite($pipes[0], $this->stdin);

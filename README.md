@@ -185,6 +185,21 @@ Sets STDERR path
 * $mode **string** - &lt;p&gt;Write mode (FILE_APPEND)&lt;/p&gt;
 
 
+### env
+
+    \PhilWaters\Process\Process PhilWaters\Process\Process::env(array $env)
+
+Sets array of environment variables
+
+
+
+* Visibility: **public**
+
+
+#### Arguments
+* $env **array** - &lt;p&gt;Array of environment variables&lt;/p&gt;
+
+
 
 ### run
 
@@ -227,8 +242,7 @@ Wait for the process to finish
 
 
 #### Arguments
-* $timeout **PhilWaters\Process\number** - &lt;p&gt;Number of seconds to wait. Pass null to wait indefinitely or until PHP process exits
-                       based on max_execution_time&lt;/p&gt;
+* $timeout **PhilWaters\Process\number** - &lt;p&gt;Number of seconds to wait. Pass null to wait indefinitely or until PHP process exits based on max_execution_time&lt;/p&gt;
 
 
 
